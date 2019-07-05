@@ -1,5 +1,6 @@
 package com.example.broswer2;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentValues;
@@ -91,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
     WebView webView;//webview主体
 
     ListView listview_bookmark;//自定义listview格式用以显示书签
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -616,7 +618,7 @@ public class MainActivity extends AppCompatActivity {
         bottom_tool_bar.setVisibility(View.GONE);
         back_dim_layout.setVisibility(View.GONE);
 
-        SimpleCursorAdapter ca = new SimpleCursorAdapter(this,R.layout.listview_bookmark_item,c,
+        final SimpleCursorAdapter ca = new SimpleCursorAdapter(this,R.layout.listview_bookmark_item,c,
                 new String[]{"bm_head","bm_url"},
                 new int[]{R.id.listview_bookmark_name,R.id.listview_bookmark_url},
                 CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
@@ -629,10 +631,75 @@ public class MainActivity extends AppCompatActivity {
                 Cursor item =  (Cursor) parent.getItemAtPosition(position);
                 System.out.println("SAFDASD:"+item.getString(2));
                 webView.loadUrl(String.valueOf(item.getString(2)));
-
                 listview_bookmark.setVisibility(View.GONE);
             }
         });
+        listview_bookmark.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(final AdapterView<?> parent, final View view, int position, long id) {
+                final Cursor item =  (Cursor) parent.getItemAtPosition(position);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(listview_bookmark.getContext());
+                String[] long_click = new String[]{"编辑","删除", "设置为主页"};
+                builder.setItems(long_click, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which){
+                            case 0:
+                                LinearLayout view_edit_bk = new LinearLayout(getApplicationContext());
+                                view_edit_bk.setOrientation(LinearLayout.VERTICAL);
+                                final EditText et_title = new EditText(getApplicationContext()),
+                                        et_url = new EditText(getApplicationContext());
+                                et_title.setWidth(100);
+                                et_url.setWidth(100);
+                                et_title.setSingleLine(true);
+                                et_url.setSingleLine(true);
+                                view_edit_bk.addView(et_title);
+                                view_edit_bk.addView(et_url);
+                                et_title.setText(item.getString(1));
+                                et_url.setText(item.getString(2));
+                                et_title.setSelectAllOnFocus(true);
+                                et_url.setSelectAllOnFocus(true);
+                                AlertDialog.Builder builder = new AlertDialog.Builder(listview_bookmark.getContext());
+                                builder.setTitle("编辑").setView(view_edit_bk)
+                                        .setNegativeButton("Cancel", null)
+                                        .setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                String title = et_title.getText().toString(),
+                                                        url = et_url.getText().toString();
+                                                System.out.println("this title: "+title+"\n"+url);
+                                                if(title!=null && url!=null){
+                                                    String sql_editname = "update book_mk set bm_head=\""+title+"\" , bm_url=\""+url+"\" where _id="+item.getString(0);
+                                                    db_bm.execSQL(sql_editname);
+                                                    Toast.makeText(getApplicationContext(),"编辑成功",Toast.LENGTH_SHORT).show();
+                                                    query_bm();
+                                                }
+
+                                            }
+                                        });
+                                builder.show();
+                                break;
+                            case 1:
+                                String sql_delete = "delete from book_mk where _id="+item.getString(0);
+                                db_bm.execSQL(sql_delete);
+                                Toast.makeText(getApplicationContext(), "删除成功", Toast.LENGTH_SHORT).show();
+                                query_bm();
+                                break;
+                            case 2:
+                                home = item.getString(2);
+                                Toast.makeText(getApplicationContext(),"设置成功",Toast.LENGTH_SHORT).show();
+                                break;
+                        }
+                    }
+                });
+                final AlertDialog dialog = builder.create();
+
+                dialog.show();
+                return true;
+            }
+        });
+
     }
 
     //插入更新语句
